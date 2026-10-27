@@ -1,0 +1,16 @@
+# Ignore everything by default
+*
+
+# Allow only these top-level files (and .gitignore itself)
+!.gitignore
+!README.md
+!Puppetiered.dmg
+!MEMORY_BENCHMARK_*.md
+
+# Allow the puppetiered-view-authoring directory and its specific files
+!puppetiered-view-authoring/
+puppetiered-view-authoring/*
+!puppetiered-view-authoring/SKILL.md
+!puppetiered-view-authoring/references/
+puppetiered-view-authoring/references/*
+!puppetiered-view-authoring/references/schema-reference.md
