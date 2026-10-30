@@ -1,0 +1,40 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name to publish (e.g. v0.9.7)'
+        required: true
+        default: 'v0.9.7'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+
+      - name: Generate SHA-256 checksum
+        run: shasum -a 256 Puppetiered.dmg > Puppetiered.dmg.sha256
+
+      - name: Create or update GitHub Release and attach DMG
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ github.event.inputs.tag || github.ref_name }}"
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release upload "${TAG_NAME}" Puppetiered.dmg Puppetiered.dmg.sha256 --clobber
+          else
+            gh release create "${TAG_NAME}" \
+              Puppetiered.dmg \
+              Puppetiered.dmg.sha256 \
+              --title "Puppetiered ${TAG_NAME}" \
+              --generate-notes
+          fi

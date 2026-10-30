@@ -14,3 +14,10 @@ puppetiered-view-authoring/*
 !puppetiered-view-authoring/references/
 puppetiered-view-authoring/references/*
 !puppetiered-view-authoring/references/schema-reference.md
+
+# Allow GitHub Actions release workflow
+!.github/
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/release.yml

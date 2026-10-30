@@ -2,7 +2,7 @@
 
 Exposure framework for everything local to macOS.
 
-**Version `0.9.6` (Build `7`)** • **macOS 14.0+ Universal (`arm64` + `x86_64`)**  
+**Version `0.9.7` (Build `8`)** • **macOS 14.0+ Universal (`arm64` + `x86_64`)**  
 **Created by Ivar Limpens Richaards (ILR / Lampekapje)** • **Bundle ID:** `com.ilr.puppetiered`
 
 A native macOS control deck for watching and controlling the things you run on your own machine — services, processes, system settings, containers, VMs, diagnostics, and config files — grouped into modular **views** declared in a lightweight `.toml` DSL or built with the built-in visual Builder.
@@ -44,7 +44,7 @@ Puppetiered turns that notebook into a **declarative `.toml` DSL for live macOS 
 | **Overview** | At-a-glance status across all active views, system load/memory bar, and attention banners. |
 | **Views** | Live control decks rendered from `.toml` files in `~/Library/Application Support/Puppetiered/Views/`. Supports `dashboard` views (live-monitored with custom `section` cards and a top `X/Y Running` Overview card with click-to-scroll) and `browser` views (on-demand master-detail lists that never poll in the background). |
 | **Starter Views** | One-click ready-made views for Docker, VirtualBox, and Python environments. |
-| **Builder** | Visual editor for creating or modifying views without hand-writing TOML, complete with crash-safe draft autosave. |
+| **Builder** | Visual editor for creating, modifying, or repairing views (including malformed or incomplete `.toml` files that failed to load, with inline field validation highlights and raw TOML fallback) without hand-writing TOML, complete with crash-safe draft autosave. |
 | **Settings** | Reorder views and sidebar groups, hide/archive/delete views, configure poll interval and pause-when-hidden behavior, and switch between **System** and **Phosphor** (retro green-on-black CRT) themes. |
 
 ---
