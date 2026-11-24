@@ -1,6 +1,6 @@
-# Puppetiered — Full `.toml` Schema Reference (v0.9.6)
+# Puppetiered — Full `.toml` Schema Reference (v0.10.0)
 
-This is the complete field reference for Puppetiered `.toml` view manifests (`~/Library/Application Support/Puppetiered/Views/<id>.toml`), covering every top-level key, item kind, parameter table, multi-state toggle table, and validation rule supported in v0.9.6.
+This is the complete field reference for Puppetiered `.toml` view manifests (`~/Library/Application Support/Puppetiered/Views/<id>.toml`), covering every top-level key, item kind, parameter table, multi-state toggle table, and validation rule supported in v0.10.0.
 
 > **Hardened Parser Guarantee:** View files are parsed by Puppetiered's built-in, zero-dependency, zero-leak C99 parser (`ILRTOML`). It enforces strict bounds (no embedded NUL bytes, capped key/array nesting depth, 16 MB input ceiling, zero side effects) and extracts **only** the exact whitelisted schema keys documented below — any unknown key is ignored and nothing else exists inside the parser.
 
@@ -10,9 +10,10 @@ This is the complete field reference for Puppetiered `.toml` view manifests (`~/
 |---|---|---|---|---|
 | `id` | string | yes | — | must be unique across *all* installed view files, not just this one |
 | `name` | string | yes | — | sidebar and header display title |
-| `icon` | string | no | `"folder"` | any string is accepted; the 8 built-in icon names below render dedicated icons, while any other string renders a generic grid glyph |
+| `icon` | string | no | `"folder"` | any string is accepted; the 9 built-in icon names below render dedicated icons, while any other string renders a generic grid glyph |
 | `group` | string | no | `"modules"` | freeform sidebar section heading (`"apps"`, `"network"`, `"system"`, `"dev"`, etc.). Special value: `"examples"` is excluded from the main sidebar, Overview, and Settings and shown only on the dedicated Examples screen. |
-| `style` | string | no | `"dashboard"` | must be `"dashboard"` or `"browser"`; anything else falls back to `"dashboard"` and reports a load issue naming the bad value |
+| `style` | string | no | `"dashboard"` | must be `"dashboard"`, `"browser"`, or `"notebook"`; anything else falls back to `"dashboard"` and reports a load issue naming the bad value |
+| `show_gpu` | bool | no | `false` | `dashboard` views only — pins a live in-process `IOKit` (`IOAccelerator`) device GPU% & VRAM pill in the view Overview/header card alongside CPU/RAM (and adds a compact GPU chip on main Overview); non-boolean values fail decode with `invalidFieldType("show_gpu")` |
 | `[[item]]` | array of tables | yes (can be empty) | — | zero or more items (see below) |
 | `[defaults]` | table of string→string | no | `{}` | pre-fills an `action` param's starting value by *name* — e.g. set `service = "Wi-Fi"` once here instead of repeating `default = "Wi-Fi"` in every action that has a `service` param. An action's own per-param `default` still wins if a param name here doesn't match anything that action declares. |
 
@@ -28,6 +29,7 @@ This is the complete field reference for Puppetiered `.toml` view manifests (`~/
 | `"container"` | `cube.box` |
 | `"vm"` | `desktopcomputer` |
 | `"code"` | `chevron.left.forwardslash.chevron.right` |
+| `"book"` | `book.closed` |
 | anything else | `square.grid.2x2` (generic fallback) |
 
 ## Fields Every `[[item]]` Has, Regardless of Kind
@@ -37,13 +39,13 @@ This is the complete field reference for Puppetiered `.toml` view manifests (`~/
 | `id` | string | yes — unique within the file (in-file duplicates are skipped with a load issue) and across all installed views |
 | `label` | string | yes |
 | `kind` | string | yes — must be exactly one of `process` / `toggle` / `action` / `info` / `config_file`; anything else is skipped with a load issue |
-| `section` | string | no — optional custom section card heading on dashboard views (trimmed; empty string normalized to `nil`). Items within each kind sharing the same `section` string are grouped into their own titled card in order of first appearance; items without `section` use the default kind heading (`"Services"`, `"Toggles"`, `"Actions"`, `"Info"`, `"Config Files"`). Also indexed by in-view search. |
+| `section` | string | no — optional custom section card heading on `dashboard` views, or freeform drag-and-drop entry group name on `notebook` views (trimmed; empty string normalized to `nil`). On dashboards, items within each kind sharing the same `section` string are grouped into their own titled card in order of first appearance (defaulting to `"Services"`, `"Toggles"`, `"Actions"`, `"Info"`, `"Config Files"`). On notebooks (`style = "notebook"`), `section` defines freeform groups (entries with omitted/`nil` `section` appear under `"Unsorted"`). Also indexed by in-view and FTS5 notebook search. |
 
 ## `kind = "process"`
 
 | key | type | required | notes |
 |---|---|---|---|
-| `status_cmd` | string | yes | exit 0 + parseable output = running; **first integer token printed is captured as the live PID** to enable: (1) inline `⏱ elapsed` and `CPU% · RAM` badges on the row, (2) the top-of-view **Overview** card (`X/Y Running`, aggregate CPU/RAM, and one-click smooth scroll to the item's section), and (3) click-through to the 1-second live process inspector (CPU/mem stats, open files, network sockets). **Zero-subprocess fast-path:** when `status_cmd` is `pgrep -x <name>` (including `||`-chained alternatives), Puppetiered resolves the PID in-process via Darwin `sysctl(KERN_PROC_ALL)` + `proc_pidpath` without spawning a shell. |
+| `status_cmd` | string | yes | exit 0 + parseable output = running; **first integer token printed is captured as the live PID** to enable: (1) inline `⏱ elapsed` and `CPU% · RAM` (plus live `GPU%` when the process holds an active Metal/OpenGL context) badges on the row, (2) the top-of-view **Overview** card (`X/Y Running`, aggregate CPU/RAM + device GPU/VRAM pill when `show_gpu = true` or a tracked process uses ≥ 0.5% GPU, and one-click smooth scroll to the item's section), and (3) click-through to the live process inspector (CPU/GPU/mem stats including cumulative GPU time, open files, network sockets). Puppetiered resolves per-PID GPU% and cumulative GPU time in-process from `IOKit` `IOAccelerator` user-clients (`accumulatedGPUTime` / `AppUsage`) with zero subprocesses. **Zero-subprocess fast-path:** when `status_cmd` is `pgrep -x <name>` (including `||`-chained alternatives), Puppetiered resolves the PID in-process via Darwin `sysctl(KERN_PROC_ALL)` + `proc_pidpath` without spawning a shell. |
 | `start_cmd` | string | yes | command to start the service |
 | `stop_cmd` | string | yes | command to stop the service |
 | `cwd` | string | yes | required on every kind that can contain a relative path — no default, no guessing |
@@ -128,9 +130,13 @@ segmented control, five or more as a dropdown.
 | key | type | required | notes |
 |---|---|---|---|
 | `run_cmd` | string | yes | may contain `{{name}}` holes matching declared params |
-| `cwd` | string | yes | working directory |
+| `cwd` | string | yes (optional for `style = "notebook"` or `copy_only = true`, defaults to `"/tmp"`) | working directory |
 | `requires_sudo` | bool | no, default `false` | routes `run_cmd` through the macOS admin prompt |
 | `confirm` | string | no | if present, a confirmation dialog shows this exact text before running; only meaningful on `action` |
+| `notes` | string | no | reference notes (supports multiline `'''...'''` TOML strings); indexed by notebook FTS5 search |
+| `tags` | array of strings | no | searchable category/topic tags (e.g. `["macos", "codesign"]`); indexed by notebook FTS5 search |
+| `source` | string | no | reference URL, man citation, or origin note; indexed by notebook FTS5 search |
+| `copy_only` | bool | no, default `false` | marks the entry copy-only in Notebook/workbench views (disables direct Run, keeps Copy / Validate / Man Page); also relaxes required `cwd` |
 | `[[item.param]]` | array of tables | no | parameter definitions for `{{name}}` holes in `run_cmd` |
 
 **`[[item.param]]` fields** (nested under an `action` item):
@@ -174,7 +180,7 @@ are part of one value — e.g. `"2027-06-01 00:00:00 +0000"`, the format
 ## Ignored / Kind-Specific Fields
 
 Fields that belong to one item kind are ignored if written on another kind:
-- `confirm` and `[[item.param]]` — only consumed on `action`.
+- `confirm`, `[[item.param]]`, `notes`, `tags`, `source`, and `copy_only` — only consumed on `action`.
 - `port` — only consumed on `process`.
 - `copyable` — only consumed on `info`.
 - `on_cmd`, `off_cmd`, `status_parse`, and `[[item.state]]` — only consumed on `toggle`.
@@ -184,7 +190,7 @@ Fields that belong to one item kind are ignored if written on another kind:
 
 - **Duplicate `id` within one file** → later item is skipped with a load issue; the rest of the file still loads.
 - **Duplicate view `id` or item `id` across files** → flagged across installed views and rejected in the Builder.
-- **Missing required field for the declared `kind`** → that item is skipped with a named reason; the rest of the file still loads.
+- **Missing required field for the declared `kind`** → that item is skipped with a named reason; the rest of the file still loads (`action.cwd` is optional when `style = "notebook"` or `copy_only = true`, defaulting to `"/tmp"`).
 - **Unknown `kind` string** → item is skipped with a load issue naming the bad value.
-- **Unknown `style` string** → view still loads, falls back to `"dashboard"`, and reports a load issue naming the bad value.
+- **Unknown `style` string** → valid `style` values are `"dashboard"`, `"browser"`, and `"notebook"`; anything else still loads, falls back to `"dashboard"`, and reports a load issue naming the bad value.
 - **Orphaned `{{name}}` holes in `run_cmd` or unused `[[item.param]]` declarations** → rejected by the Builder validator and authoring checklist.

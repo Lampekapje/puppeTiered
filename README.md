@@ -2,7 +2,7 @@
 
 Exposure framework for everything local to macOS.
 
-**Version `0.9.7` (Build `8`)** • **macOS 14.0+ Universal (`arm64` + `x86_64`)**  
+**Version `0.10.0` (Build `11`)** • **macOS 14.0+ Universal (`arm64` + `x86_64`)**  
 **Created by Ivar Limpens Richaards (ILR / Lampekapje)** • **Bundle ID:** `com.ilr.puppetiered`
 
 A native macOS control deck for watching and controlling the things you run on your own machine — services, processes, system settings, containers, VMs, diagnostics, and config files — grouped into modular **views** declared in a lightweight `.toml` DSL or built with the built-in visual Builder.
@@ -19,7 +19,7 @@ Puppetiered turns that notebook into a **declarative `.toml` DSL for live macOS 
 
 - **Zero External Runtime or Third-Party Dependencies:** Puppetiered is a standalone native Swift/AppKit/SwiftUI universal binary (`arm64` + `x86_64`). It requires no Python, no Node, no Homebrew, and no background helper daemons, and uses its own hardened, [zero-leak](MEMORY_BENCHMARK_v0.9.6.md) native TOML parser that only accepts the exact syntax and schema fields Puppetiered works with — nothing else even exists inside the parser.
 - **Zero Telemetry or Online Shenanigans:** No analytics, no crash reporters, no update pings, no accounts. The app makes zero network requests of its own; it only ever runs the local commands declared in your views.
-- **Native OS Speed:** Process checks (`pgrep -x`) run in-process via Darwin `sysctl(KERN_PROC_ALL)` + `libproc` with zero subprocess spawning, process exits are tracked immediately via kernel `kqueue` (`EVFILT_PROC` / `NOTE_EXIT`), and off-screen views automatically relax or pause polling when the window is hidden.
+- **Native OS Speed:** Process checks (`pgrep -x`) run in-process via Darwin `sysctl(KERN_PROC_ALL)` + `libproc` with zero subprocess spawning, device GPU utilization / VRAM and per-PID GPU time are read in-process via unprivileged `IOKit` (`IOAccelerator`), process exits are tracked immediately via kernel `kqueue` (`EVFILT_PROC` / `NOTE_EXIT`), and off-screen views automatically relax or pause polling when the window is hidden.
 - **Bring Your Own Commands (or Language):** Built-in and starter views use native macOS/POSIX tools (`ps`, `awk`, `sed`, `grep`, `networksetup`, `lsof`, `launchctl`), while your own custom `.toml` views are free to call shell pipelines, Python scripts, database CLIs, or anything else on your machine.
 
 ---
@@ -41,11 +41,47 @@ Puppetiered turns that notebook into a **declarative `.toml` DSL for live macOS 
 
 | Screen | Purpose |
 | :--- | :--- |
-| **Overview** | At-a-glance status across all active views, system load/memory bar, and attention banners. |
-| **Views** | Live control decks rendered from `.toml` files in `~/Library/Application Support/Puppetiered/Views/`. Supports `dashboard` views (live-monitored with custom `section` cards and a top `X/Y Running` Overview card with click-to-scroll) and `browser` views (on-demand master-detail lists that never poll in the background). |
+| **Overview** | At-a-glance status across all active views, system CPU load and live `IOKit` GPU/VRAM cards, and attention banners. |
+| **Views** | Live control decks rendered from `.toml` files in `~/Library/Application Support/Puppetiered/Views/`. Supports `dashboard` views (live-monitored with custom `section` cards, optional `show_gpu = true` GPU/VRAM header pills, and a top `X/Y Running` Overview card with click-to-scroll), `browser` views (on-demand master-detail lists that never poll in the background), and `notebook` views (`style = "notebook"`, zero polling, zero auto-run command reference books). Dashboard and browser views display a clickable `<view-id>.sqlite` history pill (`on` / `off` / `problem`) and mirrored recording toggle. |
+| **Notebook** | Your permanently accessible **Engineer's Little Black Book** in the sidebar footer. Includes a one-click starter template, multi-notebook or `"All Notebooks"` filtering, SQLite FTS5 + literal command/tag/notes search, freeform drag-and-drop groups (`section`) and entry reordering, clickable tags, `Quick Add` capture, interactive parameter workbench (auto-assembled on change or triggered manually via **Assemble Command**, configurable in **Settings → Notebook**), non-executing `zsh -n` syntax & binary validation, and smart pipeline/`sudo`-aware `man` page lookups. |
 | **Starter Views** | One-click ready-made views for Docker, VirtualBox, and Python environments. |
-| **Builder** | Visual editor for creating, modifying, or repairing views (including malformed or incomplete `.toml` files that failed to load, with inline field validation highlights and raw TOML fallback) without hand-writing TOML, complete with crash-safe draft autosave. |
-| **Settings** | Reorder views and sidebar groups, hide/archive/delete views, configure poll interval and pause-when-hidden behavior, and switch between **System** and **Phosphor** (retro green-on-black CRT) themes. |
+| **Builder** | Visual editor for creating, modifying, or repairing any view (`dashboard`, `browser`, or `notebook` — including `notes`, `tags`, `source`, and `copy_only` action metadata, malformed or incomplete `.toml` files that failed to load, inline field validation highlights, and raw TOML fallback) without hand-writing TOML, complete with crash-safe draft autosave. |
+| **Settings** | Drag-and-drop reorder views and sidebar groups, hide/archive/delete views, configure **Notebook** command auto-assembly, toggle per-view SQLite history recording, manage archiving & calendar by-date pruning, copy CLI hooks, configure poll intervals, and switch between **System** and **Phosphor** (retro green-on-black CRT) themes. |
+
+---
+
+## Notebook — Your Engineer's Little Black Book
+
+Have a half-page `csrutil`, `defaults write`, `xattr`, or `lsof` pipeline you only need once a year? Puppetiered pins a dedicated **Notebook** workspace permanently in the sidebar footer alongside Settings and Builder (`style = "notebook"`, zero background polling, zero auto-run):
+
+- **Start in one click:** Generate the built-in **Little Black Book** starter notebook (postponing macOS update nags, SIP checks, quarantine removal, directory ownership, firewall status) or keep multiple topic notebooks searched together via **All Notebooks**.
+- **SQLite FTS5 + literal symbol search:** Ranked full-text search (Porter stemming + BM25) across titles, tags, freeform groups, notes, commands, parameters, and sources — paired with literal substring matching for flags like `-dr`, plist domains, and pipes.
+- **Freeform groups & drag-and-drop reordering:** Group entries into any `section` name you type (with inline group rename), click tags to filter, and drag-and-drop to reorder or move entries across groups — plus drag-and-drop reordering for views and sidebar groups directly in the sidebar and Settings.
+- **`+ Quick Add` capture:** Save new snippets, notes, tags, sources, or `copy_only` commands in seconds, or open any entry in the Builder for parameters (`[[item.param]]`) and confirmations.
+- **Editable Command Workbench:** Fill parameters live (auto-assembled as you type, or on demand with **Assemble Command** via **Settings → Notebook**), tweak the resulting command inline (**Reset** / **Save to View**), run non-executing `/bin/zsh -n` syntax + missing-binary validation, pop open smart `sudo`/pipeline-aware `man` pages, **Copy** / **Copy w/ sudo**, or **Run** directly from Puppetiered.
+
+```toml
+id = "little-black-book"
+name = "Little Black Book"
+icon = "book"
+group = "notebook"
+style = "notebook"
+
+[[item]]
+id = "lbb-defer-updates"
+label = "Postpone Major macOS Update Nags"
+kind = "action"
+section = "System Updates"
+run_cmd = "defaults write com.apple.SoftwareUpdate MajorOSUserNotificationDate -date {{until}}"
+requires_sudo = true
+tags = ["softwareupdate", "updates", "macos"]
+notes = "Pushes major OS upgrade notifications out until the chosen UTC date."
+
+[[item.param]]
+name = "until"
+prompt = "Defer until (UTC)"
+type = "date"
+```
 
 ---
 
@@ -92,11 +128,32 @@ set_cmd = "networksetup -setv6automatic Wi-Fi"
 
 ### The Five Item Kinds
 
-1. **`process`** — A daemon, app, or service with live running/stopped status, PID badge, inline elapsed uptime + CPU/RAM usage, a top-of-view `X/Y Running` summary with click-to-scroll, and a 1-second live process inspector (CPU/memory, open files, and network sockets).
+1. **`process`** — A daemon, app, or service with live running/stopped status, PID badge, inline elapsed uptime + CPU/GPU/RAM usage, a top-of-view `X/Y Running` summary (with CPU/RAM and optional/auto GPU/VRAM pills) with click-to-scroll, and a 1-second live process inspector (CPU/GPU/memory, open files, and network sockets).
 2. **`toggle`** — A 2-state switch (`on_cmd` / `off_cmd`) or multi-state segmented/dropdown selector (`[[item.state]]`).
 3. **`action`** — A one-off command button, optionally with `confirm` prompts or parameterized `[[item.param]]` inputs.
 4. **`info`** — A live read-only status readout (single-line output renders inline; multi-line output automatically renders in a monospaced diagnostic block), with optional `copyable = true` and `requires_sudo = true` sticky admin snapshot refresh.
 5. **`config_file`** — An in-app file editor with automatic timestamped backups (up to 20 kept), `validate_cmd` syntax checking (`{{file}}`), and `apply_cmd` hooks (`{{file}}`).
+
+---
+
+## Per-View SQLite History & CLI Hooks
+
+Every view can opt in (either from **Settings → View List** or from the `.sqlite` toggle pill right in the view's header) to record state transitions, CPU/GPU/memory deltas, and executed actions into its own standalone database:
+
+- **One `.sqlite` per view:** `~/Library/Application Support/Puppetiered/History/<view-id>.sqlite` (backed directly by macOS system `libsqlite3` in WAL mode — zero external connectors or heavy UI viewers bundled in the app).
+- **Flat `history` & `state_changes` SQL views:** Open any `.sqlite` file in `sqlite3`, TablePlus, DB Browser, DuckDB, Python, or your own message broker and `SELECT * FROM history` or `SELECT * FROM state_changes` without manual joins.
+- **No automatic caps:** Unrecorded views keep full `pauseWhenHidden` zero-footprint behavior; recorded views continue background logging on a separate `10s–300s` cadence (`30s` default) while hidden. **Settings → History & Archiving** includes calendar by-date pruning (`DatePicker` + `7d`/`30d`/`90d`/`1y` jumps), **Archive & Start New** WAL rotation into `History/Archive/`, and Trash-safe clearing.
+- **Built-in CLI Hooks:**
+  ```sh
+  # Invoke directly from the app bundle (or symlink `puppetiered-history` from bin/):
+  /Applications/Puppetiered.app/Contents/MacOS/Puppetiered history list
+  /Applications/Puppetiered.app/Contents/MacOS/Puppetiered history status my-stack
+  /Applications/Puppetiered.app/Contents/MacOS/Puppetiered history tail my-stack --changes-only --json
+  /Applications/Puppetiered.app/Contents/MacOS/Puppetiered history query my-stack "SELECT * FROM state_changes ORDER BY sample_id DESC LIMIT 20"
+  /Applications/Puppetiered.app/Contents/MacOS/Puppetiered history record my-stack on
+  /Applications/Puppetiered.app/Contents/MacOS/Puppetiered history prune my-stack --before 30d --yes
+  /Applications/Puppetiered.app/Contents/MacOS/Puppetiered history archive my-stack
+  ```
 
 ---
 

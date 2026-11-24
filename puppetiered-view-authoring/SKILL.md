@@ -3,27 +3,27 @@ name: puppetiered-view-authoring
 description: Write, edit, or validate a Puppetiered view file (.toml manifest in ~/Library/Application Support/Puppetiered/Views/ describing a sidebar view of services, multi-state toggles, actions, info monitors, or config files). Use whenever asked to create or update a Puppetiered view, convert terminal commands or scripts into a view, or debug/validate a view .toml file.
 ---
 
-# Writing a Puppetiered View (v0.9.6+)
+# Writing a Puppetiered View (v0.10.0+)
 
 A **View** is a single `<id>.toml` file in `~/Library/Application Support/Puppetiered/Views/`.
 Puppetiered watches that directory via FSEvents and hot-reloads on both atomic saves and in-place edits — no app restart or rebuild is needed. View manifests are parsed in-process by Puppetiered's own hardened, zero-leak native TOML parser (`ILRTOML`), which enforces strict syntax bounds and reads **only** the exact whitelisted schema keys defined below (nothing else exists inside the parser). If a file has a syntax or schema error, Puppetiered surfaces a load-issue card in **Overview** and **Settings** with direct click-through to **Open in Builder**, **Edit .toml**, or **Reveal in Finder** (plus manual **Reload Views** buttons in the sidebar and Settings).
 
-This skill is **self-contained**: the complete v0.9.6 schema, capability matrix, and runtime guardrails are below. An exhaustive field-by-field reference is also bundled in `references/schema-reference.md` next to this file.
+This skill is **self-contained**: the complete v0.10.0 schema, capability matrix, and runtime guardrails are below. An exhaustive field-by-field reference is also bundled in `references/schema-reference.md` next to this file.
 
 ---
 
 ## 1. Exact Top-Level TOML Shape (No `[meta]`, No `[[items]]`)
 
 > **CRITICAL SYNTAX RULE:**
-> - View metadata keys (`id`, `name`, `icon`, `group`, `style`) live at the **top level** of the TOML file — **NEVER** wrap them in `[meta]` or `[view]`.
+> - View metadata keys (`id`, `name`, `icon`, `group`, `style`, `show_gpu`) live at the **top level** of the TOML file — **NEVER** wrap them in `[meta]` or `[view]`.
 > - Item tables use the **singular** key `[[item]]` (and `[[item.param]]`, `[[item.state]]`) — **NEVER** `[[items]]`.
 
 ```toml
 id = "xcode-device-sync"       # required: unique slug across ALL installed views
 name = "Xcode Device Sync"     # required: sidebar display name
-icon = "network"               # optional (default "folder"): see 8 valid icons below
+icon = "network"               # optional (default "folder"): see 9 valid icons below
 group = "system"               # optional (default "modules"): sidebar section heading
-style = "dashboard"            # optional: "dashboard" (default) | "browser"
+style = "dashboard"            # optional: "dashboard" (default) | "browser" | "notebook"
 
 [defaults]                     # optional: shared default values for action params by name
 service = "Wi-Fi"
@@ -45,9 +45,10 @@ requires_sudo = true
 |:---|:---|:---|:---|:---|
 | `id` | string | **yes** | — | Lowercase hyphenated slug. Must be unique across **all** installed `.toml` files (cross-file collisions are rejected). |
 | `name` | string | **yes** | — | Human-readable title shown in the sidebar and view header. |
-| `icon` | string | no | `"folder"` | Must be one of the **8 built-in icon names**: `"server"`, `"shield"`, `"network"`, `"folder"`, `"package"`, `"container"`, `"vm"`, `"code"`. Any other string silently falls back to a generic grid icon. |
+| `icon` | string | no | `"folder"` | Must be one of the **9 built-in icon names**: `"server"`, `"shield"`, `"network"`, `"folder"`, `"package"`, `"container"`, `"vm"`, `"code"`, `"book"`. Any other string silently falls back to a generic grid icon. |
 | `group` | string | no | `"modules"` | Freeform sidebar section header (`"system"`, `"network"`, `"dev"`, etc.). **Special value:** `"examples"` hides the view from the main sidebar, Overview, and Settings, showing it only on the **Examples** screen. |
-| `style` | string | no | `"dashboard"` | `"dashboard"` (all items visible, grouped by kind, live-polled every 2s) or `"browser"` (left category list + right on-demand detail pane; **nothing polls**, supports `info` and `action` items only). |
+| `style` | string | no | `"dashboard"` | `"dashboard"` (all items visible, grouped by kind, live-polled every 2s), `"browser"` (left category list + right on-demand detail pane; **nothing polls**, supports `info` and `action` items only), or `"notebook"` (Engineer's Little Black Book workbench with FTS5 search, freeform drag-and-drop `section` groups, optional `cwd`, zero background polling, zero auto-run). |
+| `show_gpu` | bool | no | `false` | `dashboard` views only — pins a live in-process `IOKit` (`IOAccelerator`) device GPU% & VRAM pill alongside CPU/RAM in the view Overview/header card. |
 | `[defaults]` | table | no | `{}` | String-to-string map pre-filling `[[item.param]]` starting values by matching param `name` across multiple actions in the view. |
 | `[[item]]` | array of tables | **yes** | — | Zero or more items (see the 5 item kinds below). |
 
@@ -57,7 +58,7 @@ requires_sudo = true
 
 Every `[[item]]` requires `id`, `label`, and `kind`, and supports an optional `section = "..."` string.
 - **Cross-view uniqueness:** Every `item.id` must be unique not only within its own file, but **across all installed views**. Prefix item IDs with the domain (e.g. `ktrace-artrace` instead of `status`) so they never collide with another view.
-- **Custom Named Sections (`section = "..."`):** On `style = "dashboard"` views, setting `section = "Core Build Engine"` or `section = "Ancillary Tool — Simulator"` on any `[[item]]` groups items sharing that `section` name into their own titled card (in the order sections first appear in the `.toml` file) instead of lumping all items under a single `"Services"` / `"Info"` / `"Actions"` card. Section names are also searchable in the view's search bar and editable in the visual Builder.
+- **Custom Named Sections / Notebook Groups (`section = "..."`):** On `style = "dashboard"` views, setting `section = "Core Build Engine"` or `section = "Ancillary Tool — Simulator"` on any `[[item]]` groups items sharing that `section` name into their own titled card (in the order sections first appear in the `.toml` file) instead of lumping all items under a single `"Services"` / `"Info"` / `"Actions"` card. On `style = "notebook"` views, `section` defines freeform drag-and-drop entry groups (entries without a `section` appear under `"Unsorted"`). Section names are indexed by both in-view search and Notebook FTS5 search, and are editable in the visual Builder.
 
 ### A. `kind = "process"` — Start/Stop Services, Live Elapsed/CPU/RAM Chips, Top Overview Card & Drill-Down
 
@@ -127,14 +128,18 @@ set_cmd = "networksetup -setv6LinkLocal Wi-Fi"
 
 ---
 
-### C. `kind = "action"` — One-Shot Commands, Group Resets & Parameterized Runs
+### C. `kind = "action"` — One-Shot Commands, Notebook Entries & Parameterized Runs
 
 | Field | Required | Notes |
 |:---|:---|:---|
 | `run_cmd` | **yes** | Command executed on click. May contain `{{name}}` holes matching `[[item.param]]` entries. |
-| `cwd` | **yes** | Working directory. |
+| `cwd` | **yes** (optional for `style = "notebook"` or `copy_only = true`, defaults to `"/tmp"`) | Working directory. |
 | `requires_sudo` | no (`false`) | Routes `run_cmd` through the macOS admin password dialog. |
 | `confirm` | no | Shows a confirmation dialog with this exact message before executing (use for destructive resets; omit for harmless/reversible actions). |
+| `notes` | no | Reference notes (supports multiline `'''...'''` TOML strings); indexed by Notebook FTS5 search. |
+| `tags` | no | Array of searchable category/topic tags (e.g. `["macos", "codesign"]`); indexed by Notebook FTS5 search. |
+| `source` | no | Reference URL, `man` citation, or origin note; indexed by Notebook FTS5 search. |
+| `copy_only` | no (`false`) | Marks the entry copy-only in Notebook/workbench views (disables direct Run while keeping Copy, `zsh -n` validation, and `man` lookup); also makes `cwd` optional. |
 | `[[item.param]]` | no | Array of parameter tables (`name`, optional `prompt`, optional `default`, optional `type = "text" | "date"`). |
 
 - **Parameter quoting:** For `type = "text"` (default), user input is split on whitespace and **each token is POSIX-shell-quoted individually** (so `"1.1.1.1 1.0.0.1"` becomes `'1.1.1.1' '1.0.0.1'`, safe against shell injection). Do not wrap `{{param}}` in extra quotes inside `run_cmd`.
@@ -205,13 +210,13 @@ set_cmd = "networksetup -setv6LinkLocal Wi-Fi"
 
 Before finishing any `.toml` view file:
 1. **Top-level keys:** `id` and `name` present at root; no `[meta]` wrapper; items use `[[item]]` (singular).
-2. **Icon & style:** `icon` is one of `server`, `shield`, `network`, `folder`, `package`, `container`, `vm`, `code`; `style` is `dashboard` or `browser` (`browser` contains only `info`/`action`).
+2. **Icon & style:** `icon` is one of `server`, `shield`, `network`, `folder`, `package`, `container`, `vm`, `code`, `book`; `style` is `dashboard`, `browser`, or `notebook` (`browser` contains only `info`/`action`; `notebook` uses `action` entries grouped by optional `section`).
 3. **Cross-view ID uniqueness:** Check existing files in `~/Library/Application Support/Puppetiered/Views/*.toml` so neither the view `id` nor any `[[item]] id` collides with another installed view.
 4. **Per-kind required fields:**
    - `process`: `status_cmd` (prints PID first!), `start_cmd`, `stop_cmd`, `cwd`.
    - `toggle` (classic): `status_cmd`, `status_parse` (`colon_tail` | `exit_code` | `contains:TEXT`), `on_cmd`, `off_cmd`, `cwd`.
    - `toggle` (multi-state): `status_cmd`, `cwd`, `status_parse` (`line` | `colon_tail`), and ≥ 2 `[[item.state]]` tables with unique `value` and `set_cmd`.
-   - `action`: `run_cmd`, `cwd`, and 1-to-1 match between `{{hole}}` tokens in `run_cmd` and `[[item.param]]` names.
+   - `action`: `run_cmd`, `cwd` (optional for `style = "notebook"` or `copy_only = true`, defaults to `"/tmp"`), and 1-to-1 match between `{{hole}}` tokens in `run_cmd` and `[[item.param]]` names.
    - `info`: `status_cmd` (fast & read-only), `cwd`.
    - `config_file`: `path`, `validate_cmd` (has `{{file}}`), `apply_cmd` (has `{{file}}`), no `cwd`.
 5. **Privilege check:** Any `requires_sudo = true` command that references the desktop user uses `$(stat -f '%u' /dev/console)` instead of `$(id -u)`.
