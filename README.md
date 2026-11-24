@@ -2,7 +2,7 @@
 
 Exposure framework for everything local to macOS.
 
-**Version `0.10.0` (Build `11`)** • **macOS 14.0+ Universal (`arm64` + `x86_64`)**  
+**Version `0.10.1` (Build `12`)** • **macOS 14.0+ Universal (`arm64` + `x86_64`)**  
 **Created by Ivar Limpens Richaards (ILR / Lampekapje)** • **Bundle ID:** `com.ilr.puppetiered`
 
 A native macOS control deck for watching and controlling the things you run on your own machine — services, processes, system settings, containers, VMs, diagnostics, and config files — grouped into modular **views** declared in a lightweight `.toml` DSL or built with the built-in visual Builder.
@@ -45,8 +45,10 @@ Puppetiered turns that notebook into a **declarative `.toml` DSL for live macOS 
 | **Views** | Live control decks rendered from `.toml` files in `~/Library/Application Support/Puppetiered/Views/`. Supports `dashboard` views (live-monitored with custom `section` cards, optional `show_gpu = true` GPU/VRAM header pills, and a top `X/Y Running` Overview card with click-to-scroll), `browser` views (on-demand master-detail lists that never poll in the background), and `notebook` views (`style = "notebook"`, zero polling, zero auto-run command reference books). Dashboard and browser views display a clickable `<view-id>.sqlite` history pill (`on` / `off` / `problem`) and mirrored recording toggle. |
 | **Notebook** | Your permanently accessible **Engineer's Little Black Book** in the sidebar footer. Includes a one-click starter template, multi-notebook or `"All Notebooks"` filtering, SQLite FTS5 + literal command/tag/notes search, freeform drag-and-drop groups (`section`) and entry reordering, clickable tags, `Quick Add` capture, interactive parameter workbench (auto-assembled on change or triggered manually via **Assemble Command**, configurable in **Settings → Notebook**), non-executing `zsh -n` syntax & binary validation, and smart pipeline/`sudo`-aware `man` page lookups. |
 | **Starter Views** | One-click ready-made views for Docker, VirtualBox, and Python environments. |
-| **Builder** | Visual editor for creating, modifying, or repairing any view (`dashboard`, `browser`, or `notebook` — including `notes`, `tags`, `source`, and `copy_only` action metadata, malformed or incomplete `.toml` files that failed to load, inline field validation highlights, and raw TOML fallback) without hand-writing TOML, complete with crash-safe draft autosave. |
-| **Settings** | Drag-and-drop reorder views and sidebar groups, hide/archive/delete views, configure **Notebook** command auto-assembly, toggle per-view SQLite history recording, manage archiving & calendar by-date pruning, copy CLI hooks, configure poll intervals, and switch between **System** and **Phosphor** (retro green-on-black CRT) themes. |
+| **Builder** | Visual editor for creating, modifying, or repairing any view (`dashboard`, `browser`, or `notebook` — including `notes`, `tags`, `source`, and `copy_only` action metadata, malformed or incomplete `.toml` files that failed to load, inline field validation highlights, and raw TOML fallback) without hand-writing TOML, complete with crash-safe draft autosave, a top **All Views** back button (`⌘[` / `Esc`), **Open View**, and `⌘S` / `⌃S` save shortcuts. |
+| **Settings** | Drag-and-drop views within or across sidebar groups (cross-group moves surgically update `group` in `.toml` with Undo), hide/archive/delete views, configure **Notebook** command auto-assembly, toggle per-view SQLite history recording, manage archiving & calendar by-date pruning, copy CLI hooks, configure poll intervals, and switch between **System** and **Phosphor** (retro green-on-black CRT) themes. |
+
+**Keyboard Navigation & Shortcuts:** `⌘1–⌘5` jump between Overview, Notebook, Builder, Starter Views, and Examples (`⌘,` Settings, `⌘R` Reload Views); `⌘K` / `⇧⌘K` focus search; `↑`/`↓` + `Return` browse and open rows; `Esc` clears filters, closes sheets, or exits the Builder editor (`⌘[`); and `⌘S` / `⌃S` save in Builder, Notebook Quick Add, inline Workbench edits, and Config File editors.
 
 ---
 
